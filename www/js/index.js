@@ -7,21 +7,27 @@ window.onload = () => {
 
   function receiveMessage( e ){
 
+    document.getElementById( 'debug' ).innerHTML = 'FUCKCCKKYOU';
+
     let msg = e.data; // { type: '', link: '', data: '' };
 
-    if( typeof( msg ) == 'string' ){ // If msg from React
+    if( msg !== undefined ){ // TODO: Try to understand who send fake messages
 
-      msg = JSON.parse( msg );
+      if( typeof( msg ) == 'string' ){ // If msg from React
 
-      //if( msg.type != 'blank' ){ # App.js 25
+        msg = JSON.parse( msg );
 
-      OnReact( msg );
+        //if( msg.type != 'blank' ){ # App.js 25
 
-      //}
+        OnReact( msg );
 
-    }else{ // If msg from Web
+        //}
 
-      OnWeb( msg );
+      }else{ // If msg from Web
+
+        OnWeb( msg );
+
+      }
 
     }
 
@@ -41,15 +47,14 @@ window.onload = () => {
 
     if( msg.type == 'system' ){ // Message for system( react )
 
-      console.log( msg.data );
-      // PRODUCTION: window.postMessage( msg.data );
+      window.postMessage( msg.data, '*' );
 
     }else if( msg.type == 'page' ){ // Message for page
 
       if( msg.direction = 'back' ){
 
         iframe.src = msg.link;
-        iframe.contentWindow.postMessage( [ dataToReturn[-1], msg.data ] ); // [ oldData, newData ]
+        iframe.contentWindow.postMessage( [ dataToReturn[-1], msg.data ], '*' ); // [ oldData, newData ]
         dataToReturn.pop();
 
       }else{
@@ -64,5 +69,6 @@ window.onload = () => {
   }
 
   iframe.src = 'words.html';
+  iframe.contentWindow.postMessage( 'DO YOU HEAR ME???', '*' );
 
 }
