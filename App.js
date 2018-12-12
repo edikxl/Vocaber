@@ -3,21 +3,26 @@ import { WebView, StatusBar, AsyncStorage } from 'react-native';
 
 export default class App extends Component {
 
-  render() {
+  componentDidMount(){
 
-    // CHECK: IF RUNS EVERY RENDER
+    this.DB.getItem( 'settings' )
+      .then( ( settings ) => {
 
-    if( !this.getItem( 'settings' ) ){ // If there is no any of dbs' config( for example settings' )
+        if( !settings ){ // If there is no any of dbs' config( for example settings' )
 
-      this.DB.CFGs.keys().forEach( name => this.DB.setCFG( name ) ); // Use blanks to set them
+          Object.keys( this.DB.CFGs ).forEach( name => this.DB.setCFG( name ) ); // Use blanks to set them
 
-    }else{ // If there are cfgs, load them
+        }else{ // If there are cfgs, load them
 
-      this.DB.CFGs.keys().forEach( name => this.DB.loadCFG( name ) );
+          Object.keys( this.DB.CFGs ).forEach( name => this.DB.loadCFG( name ) );
 
-    }
+        }
 
-    // ...
+      })
+
+  }
+
+  render(){
 
     return(
 
@@ -34,18 +39,24 @@ export default class App extends Component {
 
   onWebMessage( e ){
 
+    console.log( e );
+    console.log( 'ARE YOU OKEY THERE, HAH???' );
+
     msg = JSON.parse( e.nativeEvent.data );
 
     // CHECK: IF WORKS WITHOUT: this.webView.postMessage( JSON.stringify( { type: 'blank' } ) );
 
-    let dataToSend = {
+    this.system[ msg.command ]( msg )
+      .then( ( data ) => {
 
-      requester: msg.ID,
-      data: this.system[ msg.command ]( msg )
+        this.webView.postMessage( JSON.stringify( {
 
-    };
+          requester: msg.ID,
+          data: data
 
-    this.webView.postMessage( JSON.stringify( dataToSend ) );
+        } ) );
+
+      } )
 
   }
 
@@ -55,13 +66,15 @@ export default class App extends Component {
 
     //CHECK: IF WORKS WITHOUT: DB: this.DB, 
 
-    'get': ( msg ) => {
+    'get': async ( msg ) => {
 
-      data = null;
+      let data = null;
 
       if( msg.sortBy == "date" ){
 
-        //data = this.dbs[ msg.db ][-msg.number:-1];
+        let IDs = this.DB.CFGs[ msg.db ].IDs.slice( -msg.number );
+
+        data = await this.DB.multiGet( IDs );
 
       }else if( msg.sortBy == 'usage' ){
 
@@ -86,16 +99,16 @@ export default class App extends Component {
         valueOfTotalUsage: 0,
         valueOfTodayUsage: 0,
         numberOfUsedAtLeastOnce: 0,
-        usedWordsToAllWordsValue: 0, // = number of used at least once / wordsIDs.len()
+        usedToAllValue: 0, // = number of words used at least once / IDs.len()
 
-        wordsIDs: [],
+        IDs: [],
         IDsSortedByUsage: []
 
       },
 
       'texts': {
 
-        textsIDs: [],
+        IDs: [],
         latestUsed: null // ID
 
       },
@@ -106,19 +119,19 @@ export default class App extends Component {
 
       }
 
-    }
+    },
 
     loadCFG( name ){
 
-      this.CFGs[ name ] = this.getItem( name );
+      this.getItem( name ).then( ( data ) => { this.CFGs[ name ] = data; } );
 
-    }
+    },
 
     setCFG( name ){
 
       this.setItem( name, this.CFGs[ name ] );
 
-    }
+    },
 
     async getItem( name ){
 
@@ -128,6 +141,12 @@ export default class App extends Component {
 
         item = await AsyncStorage.getItem( name );
 
+        if( item !== undefined ){
+
+          return item;
+
+        }
+
       } catch (error) {
 
         console.log( error.message ); // ADD: LOGGER
@@ -136,13 +155,17 @@ export default class App extends Component {
 
       return item;
 
-    }
+    },
 
-    async setItem( name, data ){
+    async multiGet( name ){
+
+      let item = undefined;
 
       try {
 
-        await AsyncStorage.setItem( name, data );
+        item = await AsyncStorage.multiGet( name );
+
+        return item;
 
       } catch (error) {
 
@@ -150,7 +173,23 @@ export default class App extends Component {
 
       }
 
-    }
+      return
+
+    },
+
+    async setItem( name, data ){
+
+      try {
+
+        await AsyncStorage.setItem( name, JSON.stringify(data) );
+
+      } catch (error) {
+
+        console.log( error.message ); // ADD: LOGGER
+
+      }
+
+    },
 
     async deleteItem( name ){
 
